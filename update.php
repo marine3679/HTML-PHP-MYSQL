@@ -1,12 +1,23 @@
 <?php
-  $conn = mysqli_connect('localhost','root','','opentutorials');
-  $sql = "SELECT * FROM topic LIMIT 1000";
-  $result = mysqli_query($conn, $sql);
-  $list = "";
-  while($row = mysqli_fetch_array($result)) {
-    // block bad output data
-    $escaped_title = htmlspecialchars($row['title']);
-    $list = $list."<li><a href=\"index.php?id={$row['id']}\">{$escaped_title}</a></li>";
+
+  try {
+    $dbh = new PDO('mysql:host=localhost;dbname=opentutorials', 'root', '');
+    //persistent connection
+    // $dbh = new PDO('mysql:host=localhost;dbname=test', $user, $pass, array(
+    //     PDO::ATTR_PERSISTENT => true
+    // ));
+    $sql = "SELECT * FROM topic LIMIT 1000";
+
+    $list = "";
+    $sth = $dbh->query($sql);
+    foreach($sth as $row) {
+        $escaped_title = htmlspecialchars($row['title']);
+        $list = $list."<li><a href=\"index.php?id={$row['id']}\">{$escaped_title}</a></li>";
+    }
+    $sth = null;
+  } catch (PDOException $e) {
+      print "Error!: " . $e->getMessage() . "<br/>";
+      die();
   }
   $article = array(
     'title' => "welcome",
@@ -15,12 +26,14 @@
   $update_link = '';
   if(isset($_GET['id'])) {
     //block sql injection
-    $filtered_id = mysqli_real_escape_string($conn, $_GET['id']);
     $sql = "SELECT * FROM topic WHERE id = {$_GET['id']}";
-    $result = mysqli_query($conn, $sql);
-    $row = mysqli_fetch_array($result);
-    $article['title'] = htmlspecialchars($row['title']);
-    $article['description'] = htmlspecialchars($row['description']);
+    $stmt = $dbh->prepare($sql);
+    if ($stmt->execute(array($_GET['id']))) {
+      while ($row = $stmt->fetch()) {
+        $article['title'] = htmlspecialchars($row['title']);
+        $article['description'] = htmlspecialchars($row['description']);
+      }
+    }
 
     $update_link = '<a href="update.php?id='.$_GET['id'].'">update</a>';
   }

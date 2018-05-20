@@ -1,44 +1,59 @@
 <?php
-  $conn = mysqli_connect('localhost','root','','opentutorials');
 
-  $sql = "SELECT * FROM author LIMIT 1000";
-  $result = mysqli_query($conn, $sql);
-  $list = '';
-  while($row = mysqli_fetch_array($result)) {
-    // block bad output data
-    $escaped_id = htmlspecialchars($row['id']);
-    $escaped_name = htmlspecialchars($row['name']);
-    $escaped_profile = htmlspecialchars($row['profile']);
-    $list = $list."<tr>
-      <td>{$escaped_id}</td>
-      <td>{$escaped_name}</td>
-      <td>{$escaped_profile}</td>
-      <td><a href=author.php?id={$escaped_id}>update</a></td>
-      <td>
-        <form action=\"process_delete_author.php\" method=\"POST\" onsubmit=\"\">
-          <input type=\"hidden\" name=\"id\"value=\"{$escaped_id}\">
-          <input type=\"submit\" value=\"delete\">
-        </form>
-      </td>
-    </tr>";
+  try {
+    $dbh = new PDO('mysql:host=localhost;dbname=opentutorials', 'root', '');
+    //persistent connection
+    // $dbh = new PDO('mysql:host=localhost;dbname=test', $user, $pass, array(
+    //     PDO::ATTR_PERSISTENT => true
+    // ));
+    $sql = "SELECT * FROM author LIMIT 1000";
+
+    $list = "";
+    $sth = $dbh->query($sql);
+    foreach($sth as $row) {
+      // block bad output data
+      $escaped_id = htmlspecialchars($row['id']);
+      $escaped_name = htmlspecialchars($row['name']);
+      $escaped_profile = htmlspecialchars($row['profile']);
+      $list = $list."<tr>
+        <td>{$escaped_id}</td>
+        <td>{$escaped_name}</td>
+        <td>{$escaped_profile}</td>
+        <td><a href=author.php?id={$escaped_id}>update</a></td>
+        <td>
+          <form action=\"process_delete_author.php\" method=\"POST\" onsubmit=\"\">
+            <input type=\"hidden\" name=\"id\"value=\"{$escaped_id}\">
+            <input type=\"submit\" value=\"delete\">
+          </form>
+        </td>
+      </tr>";
+    }
+    $sth = null;
+  } catch (PDOException $e) {
+      print "Error!: " . $e->getMessage() . "<br/>";
+      die();
   }
+
   $form_action = "process_create_author.php";
   $escaped_name_update = '';
   $escaped_profile_update = '';
   $create_value_submit = "create author";
   $form_id = "";
   if(isset($_GET['id'])) {
-    $filtered_id = mysqli_real_escape_string($conn, $_GET['id']);
-    $sql = "SELECT * FROM author WHERE id = {$filtered_id}";
-    // die($sql);
-    $result = mysqli_query($conn, $sql);
-    $row = mysqli_fetch_array($result);
-    $escaped_id_update = htmlspecialchars($row['id']);
-    $escaped_name_update = htmlspecialchars($row['name']);
-    $escaped_profile_update = htmlspecialchars($row['profile']);
-    $create_value_submit = "update author";
-    $form_action = "process_update_author.php";
-    $form_id = '<input type="hidden" name="id" value="'.$escaped_id_update.'">';
+    $filtered_id = $_GET['id'];
+    $sql = "SELECT * FROM author WHERE id = :id";
+    $stmt = $dbh->prepare($sql);
+    $stmt->bindParam(':id', $filtered_id);
+    if ($stmt->execute()) {
+      while ($row = $stmt->fetch()) {
+        $escaped_id_update = htmlspecialchars($row['id']);
+        $escaped_name_update = htmlspecialchars($row['name']);
+        $escaped_profile_update = htmlspecialchars($row['profile']);
+        $create_value_submit = "update author";
+        $form_action = "process_update_author.php";
+        $form_id = '<input type="hidden" name="id" value="'.$escaped_id_update.'">';
+      }
+    }
   }
 
 ?>

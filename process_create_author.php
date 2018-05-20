@@ -1,21 +1,36 @@
 <?php
-  $conn = mysqli_connect('localhost','root','','opentutorials');
+  try {
+    $dbh = new PDO('mysql:host=localhost;dbname=opentutorials', 'root', '');
+    //persistent connection
+    // $dbh = new PDO('mysql:host=localhost;dbname=test', $user, $pass, array(
+    //     PDO::ATTR_PERSISTENT => true
+    // ));
+  } catch (Exception $e) {
+      die("Unable to connect: " . $e->getMessage());
+  }
   //block sql injection
   $filtered = array(
-    'name'=>mysqli_real_escape_string($conn, $_POST['name']),
-    'profile'=>mysqli_real_escape_string($conn, $_POST['profile'])
+    'name'=>$_POST['name'],
+    'profile'=>$_POST['profile']
   );
 
   $sql = "
     INSERT INTO author (name,profile)
-    VALUES ('{$filtered['name']}','{$filtered['profile']}')
+    VALUES (:name,:profile)
     ";
 
-  $result = mysqli_query($conn, $sql);
-  if($result === false) {
-    echo 'Problem.';
-    error_log(mysqli_error($conn));
-  } else {
+  try {
+    $stmt = $dbh->prepare($sql);
+    $stmt->bindParam(':name', $name);
+    $stmt->bindParam(':profile', $profile);
+
+    // insert one row
+    $name = $filtered['name'];
+    $profile = $filtered['profile'];
+    $stmt->execute();
     header("Location: author.php");
+  } catch(Exception $e) {
+    error_log($e->getMessage());
+    echo "Failed: " . $e->getMessage();
   }
 ?>

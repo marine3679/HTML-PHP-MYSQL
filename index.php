@@ -1,13 +1,27 @@
 <?php
-  $conn = mysqli_connect('localhost','root','','opentutorials');
-  $sql = "SELECT * FROM topic LIMIT 1000";
-  $result = mysqli_query($conn, $sql);
-  $list = "";
-  while($row = mysqli_fetch_array($result)) {
-    // block bad output data
-    $escaped_title = htmlspecialchars($row['title']);
-    $list = $list."<li><a href=\"index.php?id={$row['id']}\">{$escaped_title}</a></li>";
+  // $conn = mysqli_connect('localhost','root','','opentutorials');
+
+  try {
+    $dbh = new PDO('mysql:host=localhost;dbname=opentutorials', 'root', '');
+    //persistent connection
+    // $dbh = new PDO('mysql:host=localhost;dbname=test', $user, $pass, array(
+    //     PDO::ATTR_PERSISTENT => true
+    // ));
+    $sql = "SELECT * FROM topic LIMIT 1000";
+
+    $list = "";
+    $sth = $dbh->query($sql);
+    foreach($sth as $row) {
+        $escaped_title = htmlspecialchars($row['title']);
+        $list = $list."<li><a href=\"index.php?id={$row['id']}\">{$escaped_title}</a></li>";
+    }
+    $sth = null;
+    $dbh = null;
+  } catch (PDOException $e) {
+      print "Error!: " . $e->getMessage() . "<br/>";
+      die();
   }
+
   $article = array(
     'title' => "welcome",
     'description' => "Welcome to the web",
@@ -16,15 +30,19 @@
   $update_link = '';
   $delete_link = '';
   if(isset($_GET['id'])) {
-    //block sql injection
-    $filtered_id = mysqli_real_escape_string($conn, $_GET['id']);
-    $sql = "SELECT * FROM topic LEFT JOIN author on topic.author_id=author.id
-      WHERE topic.id = {$filtered_id}";
-    $result = mysqli_query($conn, $sql);
-    $row = mysqli_fetch_array($result);
-    $article['title'] = htmlspecialchars($row['title']);
-    $article['description'] = htmlspecialchars($row['description']);
-    $article['name'] = "by ".htmlspecialchars($row['name']);
+    $dbh = new PDO('mysql:host=localhost;dbname=opentutorials', 'root', '');
+    $sql = "SELECT * FROM topic LEFT JOIN author on topic.author_id=author.id WHERE topic.id = ? ";
+    // die($sql);
+    $stmt = $dbh->prepare($sql);
+    if ($stmt->execute(array($_GET['id']))) {
+      while ($row = $stmt->fetch()) {
+        $article['title'] = htmlspecialchars($row['title']);
+        $article['description'] = htmlspecialchars($row['description']);
+        $article['name'] = "by ".htmlspecialchars($row['name']);
+      }
+    }
+    $stmt = null;
+    $dbh = null;
     $update_link = '<a href="update.php?id='.$_GET['id'].'">update</a>';
     $delete_link = "
       <form action=\"process_delete.php\" method=\"POST\">
